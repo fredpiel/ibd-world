@@ -38,7 +38,9 @@ def ibd_covariance_submodel():
     diff_degree = pm.Uniform('diff_degree', .01, 3)
     
     # The nugget variance.
-    V = pm.Exponential('V', .1, value=1.)
+    V_shift = pm.Exponential('V_shift', .1, value=1.)
+    V = V_shift + .01
+    V.__name__ = 'V'
     
     # Create the covariance & its evaluation at the data locations.
     @pm.deterministic(trace=True)
