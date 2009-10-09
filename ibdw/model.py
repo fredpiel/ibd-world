@@ -139,7 +139,7 @@ def make_model(lon,lat,covariate_values,pos,neg,cpus=1):
             sp_sub = ibd_covariance_submodel()    
             covariate_dict, C_eval = cd_and_C_eval(covariate_values, sp_sub['C'], data_mesh, ui)
             
-            @pm.deterministic
+            @pm.deterministic(trace=False)
             def S_eval(C_eval=C_eval):
                 try:
                     return np.linalg.cholesky(C_eval)
