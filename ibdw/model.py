@@ -163,7 +163,7 @@ def make_model(lon,lat,covariate_values,pos,neg,cpus=1):
             for i in xrange(len(pos)/grainsize+1):
                 sl = slice(i*grainsize,(i+1)*grainsize,None)
                 # Nuggeted field in this cluster
-                if sl.stop > sl.start:
+                if len(f[fi[sl]])>0:
                     eps_p_f_d.append(pm.Normal('eps_p_f_%i'%i, f[fi[sl]], 1./sp_sub['V'], value=pm.logit(s_hat[sl]),trace=False))
 
                     # The allele frequency
