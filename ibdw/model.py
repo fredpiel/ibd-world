@@ -136,20 +136,21 @@ def make_model(lon,lat,covariate_values,pos,neg,cpus=1):
 
     for i in xrange(len(pos)/grainsize+1):
         sl = slice(i*grainsize,(i+1)*grainsize,None)
-        # Nuggeted field in this cluster
-        eps_p_f_d.append(pm.Normal('eps_p_f_%i'%i, sp_sub.f_eval[fi[sl]], 1./spatial_vars['V'], value=pm.logit(s_hat[sl]),trace=False))
+        if len(s_hat[sl])>0:
+            # Nuggeted field in this cluster
+            eps_p_f_d.append(pm.Normal('eps_p_f_%i'%i, sp_sub.f_eval[fi[sl]], 1./spatial_vars['V'], value=pm.logit(s_hat[sl]),trace=False))
 
-        # The allele frequency
-        s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1]: invlogit(lt),trace=False))
+            # The allele frequency
+            s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1]: invlogit(lt),trace=False))
 
-        # The observed allele frequencies
-        data_d.append(pm.Binomial('data_%i'%i, pos[sl]+neg[sl], s_d[-1], value=pos[sl], observed=True))
+            # The observed allele frequencies
+            data_d.append(pm.Binomial('data_%i'%i, pos[sl]+neg[sl], s_d[-1], value=pos[sl], observed=True))
     
     # The field plus the nugget
     @pm.deterministic
     def eps_p_f(eps_p_fd = eps_p_f_d):
         """Concatenated version of eps_p_f, for postprocessing & Gibbs sampling purposes"""
-        return np.concatenate(eps_p_fd)
+        return np.concatenate(map(np.atleast_1d, eps_p_fd))
     
     init_OK = True        
 
