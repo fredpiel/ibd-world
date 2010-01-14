@@ -35,7 +35,7 @@ from ibdw import cut_matern
 # lon = np.array([lonfun(tau)*180./np.pi for tau in t])
 
 
-def ibd_covariance_submodel():
+def ibd_covariance_submodel(mesh):
     """
     A small function that creates the mean and covariance object
     of the random field.
@@ -61,11 +61,19 @@ def ibd_covariance_submodel():
     # The nugget variance.
     V = pm.Exponential('V', .1, value=1.)
     
+    @pm.deterministic(trace=True)
+    def M():
+        return pm.gp.Mean(pm.gp.zero_fn)
+    
     # Create the covariance & its evaluation at the data locations.
     @pm.deterministic(trace=True)
     def C(amp=amp, scale=scale, diff_degree=diff_degree):
         """A covariance function created from the current parameter values."""
         return pm.gp.FullRankCovariance(cut_matern, amp=amp, scale=scale, diff_degree=diff_degree)
+        
+    sp_sub = pm.gp.GPSubmodel('sp_sub',M,C,mesh)
+    
+    sp_sub.f_eval.value = sp_sub.f_eval.value - sp_sub.f_eval.value.mean()    
     
     return locals()
     
@@ -117,31 +125,9 @@ def make_model(lon,lat,covariate_values,pos,neg,cpus=1):
     # Unique data locations
     logp_mesh = combine_spatial_inputs(lon,lat)
         
-    normrands = np.random.normal(size=1000)
-        
-    # Create the mean & its evaluation at the data locations.
-    M, M_eval = trivial_means(logp_mesh)    
-
     # Space-time component
-    sp_sub = ibd_covariance_submodel()    
-    
-    covariate_dict, C_eval = cd_and_C_eval(covariate_values, sp_sub['C'], data_mesh, ui)
-    
-    @pm.deterministic(trace=False)
-    def S_eval(C_eval=C_eval):
-        try:
-            return np.linalg.cholesky(C_eval)
-        except np.linalg.LinAlgError:
-            return None
-            
-    @pm.potential
-    def fr_check(S_eval=S_eval):
-        return -np.inf if S_eval is None else 0
-
-    # The field evaluated at the uniquified data locations            
-    f = pm.MvNormalChol('f', M_eval, S_eval)
-    # Make f start somewhere a bit sane
-    f.value = f.value - np.mean(f.value)
+    spatial_vars = ibd_covariance_submodel(logp_mesh)    
+    sp_sub = spatial_vars['sp_sub']
 
     # Loop over data clusters
     eps_p_f_d = []
@@ -151,7 +137,7 @@ def make_model(lon,lat,covariate_values,pos,neg,cpus=1):
     for i in xrange(len(pos)/grainsize+1):
         sl = slice(i*grainsize,(i+1)*grainsize,None)
         # Nuggeted field in this cluster
-        eps_p_f_d.append(pm.Normal('eps_p_f_%i'%i, f[fi[sl]], 1./sp_sub['V'], value=pm.logit(s_hat[sl]),trace=False))
+        eps_p_f_d.append(pm.Normal('eps_p_f_%i'%i, sp_sub.f_eval[fi[sl]], 1./spatial_vars['V'], value=pm.logit(s_hat[sl]),trace=False))
 
         # The allele frequency
         s_d.append(pm.Lambda('s_%i'%i,lambda lt=eps_p_f_d[-1]: invlogit(lt),trace=False))
@@ -168,7 +154,7 @@ def make_model(lon,lat,covariate_values,pos,neg,cpus=1):
     init_OK = True        
 
     out = locals()
-    out.pop('sp_sub')
-    out.update(sp_sub)
+    out.pop('spatial_vars')
+    out.update(spatial_vars)
 
     return out
