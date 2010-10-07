@@ -60,9 +60,9 @@ def ibd_covariance_submodel():
     """
    
     # Anisotropy parameters.
-       inc = pm.CircVonMises('inc', 0, 0)
-       sqrt_ecc = pm.Uniform('sqrt_ecc', 0, .95)
-       ecc = sqrt_ecc**2
+    inc = pm.CircVonMises('inc', 0, 0)
+    sqrt_ecc = pm.Uniform('sqrt_ecc', 0, .95)
+    ecc = sqrt_ecc**2
  
     # The fraction of the partial sill going to 'short' variation.
     amp_short_frac = pm.Uniform('amp_short_frac',0,1)
