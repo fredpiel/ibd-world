@@ -173,7 +173,7 @@ def make_model(lon,lat,covariate_values,pos,neg,cpus=1):
             # Space-time component
             sp_sub = ibd_covariance_submodel()    
             @pm.potential
-            Def pripred_check(m=m,amp=sp_sub['amp'],V=sp_sub['V'],normrands=normrands):
+            def pripred_check(m=m,amp=sp_sub['amp'],V=sp_sub['V'],normrands=normrands):
                 sum_above = np.sum(pm.flib.invlogit(normrands*np.sqrt(amp+V)+m)>.017)
                 if float(sum_above) / len(normrands) <= 1.-.79:
                     return 0.
